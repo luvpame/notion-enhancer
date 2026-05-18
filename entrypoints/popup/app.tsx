@@ -9,103 +9,43 @@ import {
   setHeadingMarkerEnabled,
   setCopyTitleHoverEnabled,
 } from "../../lib/notion-enhancer-settings";
-import { extensionDescription, extensionName } from "../../lib/notion-enhancer-metadata";
-import { pingBackground, type NotionEnhancerPongMessage } from "../../lib/notion-enhancer-protocol";
-
-type DiagnosticState =
-  | {
-      status: "idle" | "loading";
-      detail: string;
-    }
-  | {
-      status: "success";
-      detail: string;
-      response: NotionEnhancerPongMessage;
-    }
-  | {
-      status: "error";
-      detail: string;
-    };
-
-const initialDiagnosticState: DiagnosticState = {
-  status: "idle",
-  detail: "必要なら background 接続を確認できます。",
-};
-
-const guideSteps = [
-  "Notion のページを開く",
-  "右上トップバーの「Markdownをコピー」を押す",
-  "GitHub や Obsidian にそのまま貼り付ける",
-];
-
-const outputHighlights = [
-  "見出し、リスト、リンク、コードブロックを Markdown 化",
-  "Notion の to-do を task list へ寄せて出力",
-  "装飾用の hidden ノードや不要な UI を除外",
-];
+import { extensionName } from "../../lib/notion-enhancer-metadata";
 
 type ToggleSettingStatus = "loading" | "ready" | "saving" | "error";
 
 interface ToggleSettingState {
   status: ToggleSettingStatus;
   enabled: boolean;
-  detail: string;
 }
 
-interface ToggleCardProps {
+interface ToggleItemProps {
   title: string;
-  kicker: string;
-  enabledLabel: string;
-  disabledLabel: string;
+  description: string;
+  icon: string;
   switchLabel: string;
   state: ToggleSettingState;
   onToggle: () => void;
 }
 
-const formatSuccess = (response: NotionEnhancerPongMessage): string =>
-  `Background connected on ${response.browser} / MV${response.manifestVersion}.`;
-
-const createHeadingMarkerDetail = (enabled: boolean): string =>
-  enabled
-    ? "見出しマーカーは有効です。現在の Notion タブにもすぐ反映されます。"
-    : "見出しマーカーは無効です。現在の Notion タブからもすぐ非表示になります。";
-
-const createCopyMarkdownButtonDetail = (enabled: boolean): string =>
-  enabled
-    ? "コピーボタンは有効です。現在の Notion タブにもすぐ反映されます。"
-    : "コピーボタンは無効です。現在の Notion タブからもすぐ非表示になります。";
-
-const createCopyTitleHoverDetail = (enabled: boolean): string =>
-  enabled
-    ? "タイトルコピー hover UI は有効です。現在の Notion タブにもすぐ反映されます。"
-    : "タイトルコピー hover UI は無効です。現在の Notion タブからもすぐ非表示になります。";
-
-const getErrorMessage = (error: unknown): string => {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Background script に接続できませんでした。";
-};
-
-const ToggleCard = ({
+const ToggleItem = ({
   title,
-  kicker,
-  enabledLabel,
-  disabledLabel,
+  description,
+  icon,
   switchLabel,
   state,
   onToggle,
-}: ToggleCardProps) => {
+}: ToggleItemProps) => {
   return (
-    <section className={`toggle-card toggle-card--${state.status}`}>
-      <div className="section-heading">
-        <p className="section-kicker">{kicker}</p>
-        <h2>{title}</h2>
+    <section className={`toggle-item toggle-item--${state.status}`}>
+      <div className="toggle-item__icon" aria-hidden="true">
+        {icon}
       </div>
-      <p className="diagnostic-detail">{state.detail}</p>
-      <label className="toggle-row">
-        <span className="toggle-copy">{state.enabled ? enabledLabel : disabledLabel}</span>
+      <div className="toggle-item__copy">
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      <label className="toggle-item__control">
+        <span className="toggle-state">{state.enabled ? "ON" : "OFF"}</span>
         <button
           className="toggle-button"
           type="button"
@@ -116,6 +56,7 @@ const ToggleCard = ({
           disabled={state.status === "loading" || state.status === "saving"}
         >
           <span className="toggle-button__track">
+            <span className="toggle-button__label">{state.enabled ? "ON" : "OFF"}</span>
             <span className="toggle-button__thumb" />
           </span>
         </button>
@@ -125,21 +66,17 @@ const ToggleCard = ({
 };
 
 const App = () => {
-  const [diagnosticState, setDiagnosticState] = useState<DiagnosticState>(initialDiagnosticState);
   const [copyMarkdownButtonState, setCopyMarkdownButtonState] = useState<ToggleSettingState>({
     status: "loading",
     enabled: true,
-    detail: "コピーボタン設定を読み込んでいます…",
   });
   const [headingMarkerState, setHeadingMarkerState] = useState<ToggleSettingState>({
     status: "loading",
     enabled: true,
-    detail: "見出しマーカー設定を読み込んでいます…",
   });
   const [copyTitleHoverState, setCopyTitleHoverState] = useState<ToggleSettingState>({
     status: "loading",
     enabled: true,
-    detail: "タイトル hover コピー設定を読み込んでいます…",
   });
 
   useEffect(() => {
@@ -160,19 +97,16 @@ const App = () => {
         setCopyMarkdownButtonState({
           status: "ready",
           enabled: copyMarkdownButtonEnabled,
-          detail: createCopyMarkdownButtonDetail(copyMarkdownButtonEnabled),
         });
         setHeadingMarkerState({
           status: "ready",
           enabled: headingMarkerEnabled,
-          detail: createHeadingMarkerDetail(headingMarkerEnabled),
         });
         setCopyTitleHoverState({
           status: "ready",
           enabled: copyTitleHoverEnabled,
-          detail: createCopyTitleHoverDetail(copyTitleHoverEnabled),
         });
-      } catch (error) {
+      } catch {
         if (!isMounted) {
           return;
         }
@@ -180,17 +114,14 @@ const App = () => {
         setCopyMarkdownButtonState({
           status: "error",
           enabled: true,
-          detail: getErrorMessage(error),
         });
         setHeadingMarkerState({
           status: "error",
           enabled: true,
-          detail: getErrorMessage(error),
         });
         setCopyTitleHoverState({
           status: "error",
           enabled: true,
-          detail: getErrorMessage(error),
         });
       }
     };
@@ -202,34 +133,12 @@ const App = () => {
     };
   }, []);
 
-  const handleDiagnosticCheck = async (): Promise<void> => {
-    setDiagnosticState({
-      status: "loading",
-      detail: "Background 接続を確認しています…",
-    });
-
-    try {
-      const response = await pingBackground(browser.runtime);
-      setDiagnosticState({
-        status: "success",
-        detail: formatSuccess(response),
-        response,
-      });
-    } catch (error) {
-      setDiagnosticState({
-        status: "error",
-        detail: getErrorMessage(error),
-      });
-    }
-  };
-
   const handleHeadingMarkerToggle = async (): Promise<void> => {
     const nextEnabled = !headingMarkerState.enabled;
 
     setHeadingMarkerState({
       status: "saving",
       enabled: nextEnabled,
-      detail: "見出しマーカー設定を保存しています…",
     });
 
     try {
@@ -237,13 +146,11 @@ const App = () => {
       setHeadingMarkerState({
         status: "ready",
         enabled: nextEnabled,
-        detail: createHeadingMarkerDetail(nextEnabled),
       });
-    } catch (error) {
+    } catch {
       setHeadingMarkerState({
         status: "error",
         enabled: !nextEnabled,
-        detail: getErrorMessage(error),
       });
     }
   };
@@ -254,7 +161,6 @@ const App = () => {
     setCopyMarkdownButtonState({
       status: "saving",
       enabled: nextEnabled,
-      detail: "コピーボタン設定を保存しています…",
     });
 
     try {
@@ -262,13 +168,11 @@ const App = () => {
       setCopyMarkdownButtonState({
         status: "ready",
         enabled: nextEnabled,
-        detail: createCopyMarkdownButtonDetail(nextEnabled),
       });
-    } catch (error) {
+    } catch {
       setCopyMarkdownButtonState({
         status: "error",
         enabled: !nextEnabled,
-        detail: getErrorMessage(error),
       });
     }
   };
@@ -279,7 +183,6 @@ const App = () => {
     setCopyTitleHoverState({
       status: "saving",
       enabled: nextEnabled,
-      detail: "タイトル hover コピー設定を保存しています…",
     });
 
     try {
@@ -287,116 +190,60 @@ const App = () => {
       setCopyTitleHoverState({
         status: "ready",
         enabled: nextEnabled,
-        detail: createCopyTitleHoverDetail(nextEnabled),
       });
-    } catch (error) {
+    } catch {
       setCopyTitleHoverState({
         status: "error",
         enabled: !nextEnabled,
-        detail: getErrorMessage(error),
       });
     }
   };
 
   return (
     <main className="popup-shell">
-      <section className="hero-card">
-        <p className="eyebrow">Notion to Markdown</p>
-        <h1>{extensionName}</h1>
-        <p className="description">{extensionDescription}</p>
-        <div className="hero-note">
-          トップバーの Markdown コピーと、見出しマーカーの ON/OFF をここから管理できます。
+      <header className="popup-header">
+        <div className="notion-mark" aria-hidden="true">
+          N
         </div>
-      </section>
-
-      <ToggleCard
-        title="Markdown コピーボタン"
-        kicker="Copy Button"
-        enabledLabel="コピーボタン: ON"
-        disabledLabel="コピーボタン: OFF"
-        switchLabel="コピーボタンを切り替える"
-        state={copyMarkdownButtonState}
-        onToggle={() => {
-          void handleCopyMarkdownButtonToggle();
-        }}
-      />
-
-      <ToggleCard
-        title="見出しマーカー"
-        kicker="Heading Marker"
-        enabledLabel="見出しマーカー: ON"
-        disabledLabel="見出しマーカー: OFF"
-        switchLabel="見出しマーカーを切り替える"
-        state={headingMarkerState}
-        onToggle={() => {
-          void handleHeadingMarkerToggle();
-        }}
-      />
-
-      <ToggleCard
-        title="タイトルコピー hover UI"
-        kicker="Title Copy"
-        enabledLabel="タイトルhover: ON"
-        disabledLabel="タイトルhover: OFF"
-        switchLabel="タイトルhoverボタンを切り替える"
-        state={copyTitleHoverState}
-        onToggle={() => {
-          void handleCopyTitleHoverToggle();
-        }}
-      />
-
-      <section className="info-card">
-        <div className="section-heading">
-          <p className="section-kicker">Flow</p>
-          <h2>使い方</h2>
+        <div>
+          <p className="subtitle">Notion to Markdown</p>
+          <h1>{extensionName}</h1>
         </div>
-        <ol className="guide-list">
-          {guideSteps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-      </section>
+      </header>
 
-      <section className="info-card">
-        <div className="section-heading">
-          <p className="section-kicker">Output</p>
-          <h2>変換の方針</h2>
-        </div>
-        <ul className="highlight-list">
-          {outputHighlights.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className={`diagnostic-card diagnostic-card--${diagnosticState.status}`}>
-        <div className="section-heading">
-          <p className="section-kicker">Diagnostic</p>
-          <h2>拡張の状態確認</h2>
-        </div>
-        <p className="diagnostic-detail">{diagnosticState.detail}</p>
-        {"response" in diagnosticState ? (
-          <dl className="status-meta">
-            <div>
-              <dt>Browser</dt>
-              <dd>{diagnosticState.response.browser}</dd>
-            </div>
-            <div>
-              <dt>Manifest</dt>
-              <dd>MV{diagnosticState.response.manifestVersion}</dd>
-            </div>
-          </dl>
-        ) : null}
-        <button
-          className="secondary-button"
-          type="button"
-          onClick={() => {
-            void handleDiagnosticCheck();
+      <section className="settings-list" aria-label="機能設定">
+        <ToggleItem
+          title="Markdown コピー"
+          description="Notion ページを Markdown としてコピーします。"
+          icon="□"
+          switchLabel="コピーボタンを切り替える"
+          state={copyMarkdownButtonState}
+          onToggle={() => {
+            void handleCopyMarkdownButtonToggle();
           }}
-          disabled={diagnosticState.status === "loading"}
-        >
-          {diagnosticState.status === "loading" ? "確認中…" : "Background を確認"}
-        </button>
+        />
+
+        <ToggleItem
+          title="見出しマーカー"
+          description="見出しの横に Markdown 記法の目印を表示します。"
+          icon="H"
+          switchLabel="見出しマーカーを切り替える"
+          state={headingMarkerState}
+          onToggle={() => {
+            void handleHeadingMarkerToggle();
+          }}
+        />
+
+        <ToggleItem
+          title="タイトル hover UI"
+          description="タイトルに触れたときコピー操作を表示します。"
+          icon="T"
+          switchLabel="タイトルhoverボタンを切り替える"
+          state={copyTitleHoverState}
+          onToggle={() => {
+            void handleCopyTitleHoverToggle();
+          }}
+        />
       </section>
     </main>
   );

@@ -38,7 +38,7 @@ vp run zip
 - extracts the current page content and converts it with `europa`
 - normalizes Notion-style to-do blocks into Markdown task list items
 - strips obvious hidden UI noise before copying
-- keeps a lightweight popup for usage guidance and background diagnostics
+- keeps a lightweight popup for toggling the three page features
 
 ## Usage
 
@@ -69,4 +69,4 @@ vp run zip
 
 ## Scope
 
-This extension intentionally stays small. It currently focuses on popup guidance, background ping/pong diagnostics, page-level Markdown copying for Notion, and a popup-controlled heading marker. Add permissions, storage, options pages, or browser-specific behavior only when the feature actually needs them.
+This extension intentionally stays small. It currently focuses on popup-controlled feature toggles, background ping/pong diagnostics, and page-level Markdown copying for Notion. Add permissions, storage, options pages, or browser-specific behavior only when the feature actually needs them.
