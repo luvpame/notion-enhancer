@@ -42,7 +42,7 @@ vp run zip
 
 ## Usage
 
-1. Open a page on `https://www.notion.so/*` or `https://*.notion.site/*`
+1. Open a page on `https://www.notion.so/*`, `https://app.notion.com/*`, or `https://*.notion.site/*`
 2. Click `Markdownをコピー` in the top bar
 3. Hover the page title to copy either the title text or Markdown link
 4. Use the popup if you want to disable or re-enable the copy button, title hover actions, or heading markers

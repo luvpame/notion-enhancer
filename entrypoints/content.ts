@@ -11,7 +11,7 @@ import {
 } from "../lib/notion/title-copy-hover";
 
 export default defineContentScript({
-  matches: ["https://www.notion.so/*", "https://*.notion.site/*"],
+  matches: ["https://www.notion.so/*", "https://app.notion.com/*", "https://*.notion.site/*"],
   runAt: "document_idle",
   main() {
     const copyMarkdownButtonController = createCopyMarkdownButtonController();
