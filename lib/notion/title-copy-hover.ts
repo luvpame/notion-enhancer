@@ -89,9 +89,9 @@ const isVisibleElement = (element: HTMLElement): boolean => {
 };
 
 const findTitle = (): HTMLHeadingElement | null => {
-  const sidebarTitle = [...document.querySelectorAll<HTMLHeadingElement>(sidebarTitleSelector)].find(
-    isVisibleElement,
-  );
+  const sidebarTitle = [
+    ...document.querySelectorAll<HTMLHeadingElement>(sidebarTitleSelector),
+  ].find(isVisibleElement);
 
   if (sidebarTitle) {
     return sidebarTitle;

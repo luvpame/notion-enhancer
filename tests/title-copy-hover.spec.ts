@@ -57,7 +57,12 @@ const setPanelSize = (panel: HTMLElement, width: number, height: number): void =
   });
 };
 
-const setupTitleHoverDom = (document: Document): (() => void) => {
+const setupTitleHoverDom = (
+  document: Document,
+): {
+  restore: () => void;
+  writeText: ReturnType<typeof vi.fn>;
+} => {
   const originalDocument = globalThis.document;
   const originalMutationObserver = globalThis.MutationObserver;
   const originalWindow = globalThis.window;
@@ -84,24 +89,27 @@ const setupTitleHoverDom = (document: Document): (() => void) => {
     configurable: true,
   });
 
-  return () => {
-    Object.assign(globalThis, {
-      document: originalDocument,
-      window: originalWindow,
-      MutationObserver: originalMutationObserver,
-    });
-    if (originalNavigatorDescriptor) {
-      Object.defineProperty(globalThis, "navigator", originalNavigatorDescriptor);
-    } else {
-      delete (globalThis as { navigator?: Navigator }).navigator;
-    }
-    if (targetNavigator) {
-      if (clipboardDescriptor) {
-        Object.defineProperty(targetNavigator, "clipboard", clipboardDescriptor);
+  return {
+    restore: () => {
+      Object.assign(globalThis, {
+        document: originalDocument,
+        window: originalWindow,
+        MutationObserver: originalMutationObserver,
+      });
+      if (originalNavigatorDescriptor) {
+        Object.defineProperty(globalThis, "navigator", originalNavigatorDescriptor);
       } else {
-        delete (targetNavigator as { clipboard?: unknown }).clipboard;
+        delete (globalThis as { navigator?: Navigator }).navigator;
       }
-    }
+      if (targetNavigator) {
+        if (clipboardDescriptor) {
+          Object.defineProperty(targetNavigator, "clipboard", clipboardDescriptor);
+        } else {
+          delete (targetNavigator as { clipboard?: unknown }).clipboard;
+        }
+      }
+    },
+    writeText,
   };
 };
 
@@ -149,7 +157,7 @@ describe("copy title hover controller", () => {
       </body></html>`,
       { url: "https://www.notion.so/parent-page?p=abcdef1234567890" },
     );
-    const restore = setupTitleHoverDom(window.document);
+    const { restore } = setupTitleHoverDom(window.document);
     const controller = createCopyTitleHoverController();
 
     try {
@@ -447,8 +455,7 @@ describe("copy actions", () => {
       </body></html>`,
       { url: `https://www.notion.so/parent-page?p=${pageId}` },
     );
-    const restore = setupTitleHoverDom(window.document);
-    const writeText = vi.mocked(navigator.clipboard.writeText);
+    const { restore, writeText } = setupTitleHoverDom(window.document);
     const controller = createCopyTitleHoverController();
 
     try {
