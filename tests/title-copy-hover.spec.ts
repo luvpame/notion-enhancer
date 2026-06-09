@@ -57,6 +57,54 @@ const setPanelSize = (panel: HTMLElement, width: number, height: number): void =
   });
 };
 
+const setupTitleHoverDom = (document: Document): (() => void) => {
+  const originalDocument = globalThis.document;
+  const originalMutationObserver = globalThis.MutationObserver;
+  const originalWindow = globalThis.window;
+  const originalNavigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+  const targetNavigator = document.defaultView?.navigator;
+  const clipboardDescriptor = targetNavigator
+    ? Object.getOwnPropertyDescriptor(targetNavigator, "clipboard")
+    : undefined;
+  const writeText = vi.fn().mockResolvedValue(undefined);
+
+  Object.assign(globalThis, {
+    document,
+    window: document.defaultView,
+    MutationObserver: setupMutationObserverMock(),
+  });
+  Object.defineProperty(targetNavigator ?? {}, "clipboard", {
+    value: {
+      writeText,
+    },
+    configurable: true,
+  });
+  Object.defineProperty(globalThis, "navigator", {
+    value: targetNavigator,
+    configurable: true,
+  });
+
+  return () => {
+    Object.assign(globalThis, {
+      document: originalDocument,
+      window: originalWindow,
+      MutationObserver: originalMutationObserver,
+    });
+    if (originalNavigatorDescriptor) {
+      Object.defineProperty(globalThis, "navigator", originalNavigatorDescriptor);
+    } else {
+      delete (globalThis as { navigator?: Navigator }).navigator;
+    }
+    if (targetNavigator) {
+      if (clipboardDescriptor) {
+        Object.defineProperty(targetNavigator, "clipboard", clipboardDescriptor);
+      } else {
+        delete (targetNavigator as { clipboard?: unknown }).clipboard;
+      }
+    }
+  };
+};
+
 describe("copy title hover controller", () => {
   it("adds and removes the hover panel", () => {
     const originalDocument = globalThis.document;
@@ -86,6 +134,37 @@ describe("copy title hover controller", () => {
         MutationObserver: originalMutationObserver,
       });
       controller.dispose();
+    }
+  });
+
+  it("adds the hover panel for a sidebar page title", () => {
+    const { window } = new JSDOM(
+      `<!doctype html><html><head></head><body>
+        <main><h1>Parent page</h1></main>
+        <div role="dialog" aria-label="Side peek">
+          <section class="notion-page-block">
+            <h1>  Sidebar Page  </h1>
+          </section>
+        </div>
+      </body></html>`,
+      { url: "https://www.notion.so/parent-page?p=abcdef1234567890" },
+    );
+    const restore = setupTitleHoverDom(window.document);
+    const controller = createCopyTitleHoverController();
+
+    try {
+      controller.setEnabled(true);
+
+      const sidebarTitle = window.document.querySelector('[role="dialog"] h1:first-of-type');
+      const panel = window.document.getElementById("notion-enhancer-title-copy-hover");
+      expect(sidebarTitle).not.toBeNull();
+      expect(panel).not.toBeNull();
+
+      sidebarTitle?.dispatchEvent(new window.MouseEvent("mouseenter", { bubbles: true }));
+      expect(panel?.hidden).toBe(false);
+    } finally {
+      controller.dispose();
+      restore();
     }
   });
 });
@@ -352,6 +431,51 @@ describe("copy actions", () => {
           delete (targetNavigator as { clipboard?: unknown }).clipboard;
         }
       }
+    }
+  });
+
+  it("copies sidebar title text and a standalone page link from the p query parameter", async () => {
+    const pageId = "abcdef1234567890abcdef1234567890";
+    const { window } = new JSDOM(
+      `<!doctype html><html><head></head><body>
+        <main><h1>Parent page</h1></main>
+        <div role="dialog" aria-label="Side peek">
+          <section class="notion-page-block">
+            <h1>  [Sidebar](Page)  </h1>
+          </section>
+        </div>
+      </body></html>`,
+      { url: `https://www.notion.so/parent-page?p=${pageId}` },
+    );
+    const restore = setupTitleHoverDom(window.document);
+    const writeText = vi.mocked(navigator.clipboard.writeText);
+    const controller = createCopyTitleHoverController();
+
+    try {
+      controller.setEnabled(true);
+
+      const buttons = window.document.querySelectorAll<HTMLButtonElement>("button[data-key]");
+      const titleButton = [...buttons].find(
+        (button) => button.getAttribute("data-key") === "title",
+      );
+      const markdownButton = [...buttons].find(
+        (button) => button.getAttribute("data-key") === "markdown",
+      );
+      expect(titleButton).not.toBeUndefined();
+      expect(markdownButton).not.toBeUndefined();
+
+      titleButton?.click();
+      markdownButton?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(writeText).toHaveBeenCalledWith("【Sidebar】（Page）");
+      expect(writeText).toHaveBeenCalledWith(
+        `[【Sidebar】（Page）](https://www.notion.so/${pageId})`,
+      );
+    } finally {
+      controller.dispose();
+      restore();
     }
   });
 });

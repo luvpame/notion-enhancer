@@ -18,7 +18,8 @@ type ButtonStyleByState = Record<
 type ButtonStateLabelByState = Record<TransientButtonState, string>;
 
 const panelId = "notion-enhancer-title-copy-hover";
-const titleSelector = "main h1:first-of-type, .notion-page-block:first-child h1:first-of-type";
+const pageTitleSelector = "main h1:first-of-type, .notion-page-block:first-child h1:first-of-type";
+const sidebarTitleSelector = '[role="dialog"] h1:first-of-type';
 const hideDelayMs = 50;
 const flashDurationMs = 1800;
 const viewportMarginPx = 8;
@@ -78,18 +79,48 @@ const normalizeMarkdownTitle = (value: string): string =>
     .replaceAll("(", "（")
     .replaceAll(")", "）");
 
-const buildMarkdownLink = (): string => {
-  const title = normalizeMarkdownTitle(
-    document.querySelector(titleSelector)?.textContent?.trim() ?? "",
+const isVisibleElement = (element: HTMLElement): boolean => {
+  if (element.hidden || element.getAttribute("aria-hidden") === "true") {
+    return false;
+  }
+
+  const style = window.getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden";
+};
+
+const findTitle = (): HTMLHeadingElement | null => {
+  const sidebarTitle = [...document.querySelectorAll<HTMLHeadingElement>(sidebarTitleSelector)].find(
+    isVisibleElement,
   );
+
+  if (sidebarTitle) {
+    return sidebarTitle;
+  }
+
+  const pageTitle = document.querySelector<HTMLHeadingElement>(pageTitleSelector);
+  return pageTitle?.tagName === "H1" ? pageTitle : null;
+};
+
+const buildStandalonePageUrl = (): string => {
   const locationUrl = new URL(window.location.href);
+  const sidebarPageId = locationUrl.searchParams.get("p")?.trim();
+
+  if (sidebarPageId) {
+    return `${locationUrl.origin}/${sidebarPageId}`;
+  }
+
   locationUrl.search = "";
   locationUrl.hash = "";
-  return `[${title}](${locationUrl.origin}${locationUrl.pathname})`;
+  return `${locationUrl.origin}${locationUrl.pathname}`;
+};
+
+const buildMarkdownLink = (): string => {
+  const title = buildTitleCopyText();
+  return `[${title}](${buildStandalonePageUrl()})`;
 };
 
 const buildTitleCopyText = (): string =>
-  normalizeMarkdownTitle(document.querySelector(titleSelector)?.textContent?.trim() ?? "");
+  normalizeMarkdownTitle(findTitle()?.textContent?.trim() ?? "");
 
 const createCopyText = (key: ButtonKey): string =>
   key === "title" ? buildTitleCopyText() : buildMarkdownLink();
@@ -322,13 +353,13 @@ export const createCopyTitleHoverController = (): {
   };
 
   const install = (): boolean => {
-    const title = document.querySelector(titleSelector);
-    if (!title || title.tagName !== "H1") {
+    const title = findTitle();
+    if (!title) {
       detachTitleHandlers();
       return false;
     }
 
-    attachTitleHandlers(title as HTMLHeadingElement);
+    attachTitleHandlers(title);
     return true;
   };
 
