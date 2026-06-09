@@ -107,7 +107,7 @@ const buildStandalonePageUrl = (): string => {
   const sidebarPageId = locationUrl.searchParams.get("p")?.trim();
 
   if (sidebarPageId) {
-    return `${locationUrl.origin}/${sidebarPageId}`;
+    return `${locationUrl.origin}/p/${sidebarPageId}`;
   }
 
   locationUrl.search = "";

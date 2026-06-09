@@ -511,7 +511,7 @@ describe("copy actions", () => {
 
       expect(writeText).toHaveBeenCalledWith("【Sidebar】（Page）");
       expect(writeText).toHaveBeenCalledWith(
-        `[【Sidebar】（Page）](https://www.notion.so/${pageId})`,
+        `[【Sidebar】（Page）](https://www.notion.so/p/${pageId})`,
       );
     } finally {
       controller.dispose();
