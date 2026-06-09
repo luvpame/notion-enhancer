@@ -180,7 +180,7 @@ describe("copy title hover controller", () => {
     const { window } = new JSDOM(
       `<!doctype html><html><head></head><body>
         <main><h1>Parent page</h1></main>
-        <div class="notion-peek-renderer">
+        <div role="region" aria-label="サイドピーク" class="notion-peek-renderer">
           <div class="layout">
             <section class="notion-page-block">
               <h1>  Peek Page  </h1>
