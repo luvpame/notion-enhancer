@@ -175,6 +175,39 @@ describe("copy title hover controller", () => {
       restore();
     }
   });
+
+  it("adds the hover panel for a Notion peek renderer page title", () => {
+    const { window } = new JSDOM(
+      `<!doctype html><html><head></head><body>
+        <main><h1>Parent page</h1></main>
+        <div class="notion-peek-renderer">
+          <div class="layout">
+            <section class="notion-page-block">
+              <h1>  Peek Page  </h1>
+            </section>
+          </div>
+        </div>
+      </body></html>`,
+      { url: "https://www.notion.so/parent-page?p=abcdef1234567890" },
+    );
+    const { restore } = setupTitleHoverDom(window.document);
+    const controller = createCopyTitleHoverController();
+
+    try {
+      controller.setEnabled(true);
+
+      const peekTitle = window.document.querySelector(".notion-peek-renderer h1:first-of-type");
+      const panel = window.document.getElementById("notion-enhancer-title-copy-hover");
+      expect(peekTitle).not.toBeNull();
+      expect(panel).not.toBeNull();
+
+      peekTitle?.dispatchEvent(new window.MouseEvent("mouseenter", { bubbles: true }));
+      expect(panel?.hidden).toBe(false);
+    } finally {
+      controller.dispose();
+      restore();
+    }
+  });
 });
 
 describe("registerCopyTitleHoverButtons", () => {

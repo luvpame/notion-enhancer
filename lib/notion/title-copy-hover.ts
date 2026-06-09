@@ -19,7 +19,8 @@ type ButtonStateLabelByState = Record<TransientButtonState, string>;
 
 const panelId = "notion-enhancer-title-copy-hover";
 const pageTitleSelector = "main h1:first-of-type, .notion-page-block:first-child h1:first-of-type";
-const sidebarTitleSelector = '[role="dialog"] h1:first-of-type';
+const sidebarTitleSelector =
+  '.notion-peek-renderer h1:first-of-type, [role="dialog"] h1:first-of-type';
 const hideDelayMs = 50;
 const flashDurationMs = 1800;
 const viewportMarginPx = 8;
